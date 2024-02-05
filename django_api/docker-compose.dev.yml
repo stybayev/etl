@@ -1,0 +1,61 @@
+version: "3.7"
+
+services:
+  db:
+    image: postgres:13
+    container_name: my_db
+    volumes:
+      - $HOME/postgresql/data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=movies_database
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=123qwe
+    restart: always
+    networks:
+      - app-network
+
+  app:
+    build: ./app
+    container_name: my_app
+    volumes:
+      - ./app:/code
+
+    command: ./start.sh
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - ./app/.env
+    environment:
+      - APP_ROOT_URLCONF=config.urls
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./configs:/etc/nginx/conf.d:ro
+      - ./app/static:/data/static:ro
+      - ./app/media:/data/media:ro
+
+    ports:
+      - "80:80"
+    env_file:
+      - ./app/.env
+    restart: always
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
+
