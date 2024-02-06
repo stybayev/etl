@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 postgres_config = PostgresConfig()
+
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
