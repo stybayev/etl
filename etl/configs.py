@@ -3,6 +3,9 @@ from pydantic.networks import PostgresDsn
 
 
 class PostgresConfig(BaseSettings):
+    """
+    Конфигурация подключения к Postgres
+    """
     host: str
     port: int
     dbname: str
