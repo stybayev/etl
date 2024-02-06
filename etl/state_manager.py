@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime
 from typing import Any, Dict
 
 
@@ -38,4 +39,7 @@ class State:
 
     def get_state(self, key: str) -> Any:
         state = self.storage.retrieve_state()
-        return state.get(key, None)
+        value = state.get(key, None)
+        if key == 'last_processed_time' and value:
+            return datetime.fromisoformat(value)
+        return value

@@ -33,6 +33,21 @@ services:
     networks:
       - esnet
 
+  db:
+    image: postgres:13
+    container_name: my_db
+    volumes:
+      - $HOME/postgresql/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=movies_database
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=123qwe
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - esnet
+
 volumes:
   esdata1:
     driver: local
