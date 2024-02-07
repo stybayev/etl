@@ -1,15 +1,21 @@
+from contextlib import contextmanager
+from datetime import datetime
+
 import psycopg2
 import logging
 
-from configs import PostgresConfig
+from configs import PostgresConfig, LoggingConfig, pg_connection
 from state_manager import State, JsonFileStorage
 from dotenv import load_dotenv
+from psycopg2.extras import DictCursor
 
+# Загрузка конфигурации
 load_dotenv()
 postgres_config = PostgresConfig()
+logging_config = LoggingConfig()
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=getattr(logging, logging_config.level), format=logging_config.format)
 logger = logging.getLogger(__name__)
 
 
@@ -34,7 +40,7 @@ class PostgresProducer:
         LIMIT 100;
         """
         try:
-            with psycopg2.connect(**self.connection_params) as conn:
+            with pg_connection(self.connection_params) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(query, (last_processed_time,))
                     records = cursor.fetchall()
@@ -51,6 +57,50 @@ class PostgresProducer:
         # Обновление состояния
         self.state_manager.set_state('last_processed_time', last_processed_time_str)
 
+        # Метод для извлечения данных о фильмах
+
+    def fetch_movies(self, last_update):
+        # Метод для извлечения данных о фильмах
+        query = """
+        SELECT fw.id, fw.title, fw.description, fw.rating, fw.type,
+               array_agg(DISTINCT g.name) as genres
+        FROM content.film_work fw
+        LEFT JOIN content.genre_film_work gfw ON fw.id = gfw.film_work_id
+        LEFT JOIN content.genre g ON g.id = gfw.genre_id
+        WHERE fw.updated_at > %s
+        GROUP BY fw.id;
+        """
+        return self._fetch_data(query, last_update)
+
+    # Метод для извлечения данных о персонах
+    def fetch_persons(self, last_update):
+        query = """
+        SELECT p.id, p.full_name, pfw.role, pfw.film_work_id
+        FROM content.person p
+        INNER JOIN content.person_film_work pfw ON p.id = pfw.person_id
+        WHERE p.updated_at > %s;
+        """
+        return self._fetch_data(query, last_update)
+
+    # Метод для извлечения данных о жанрах
+    def fetch_genres(self, last_update):
+        query = """
+        SELECT g.id, g.name, gfw.film_work_id
+        FROM content.genre g
+        INNER JOIN content.genre_film_work gfw ON g.id = gfw.genre_id
+        WHERE g.updated_at > %s;
+        """
+        return self._fetch_data(query, last_update)
+
+        # Общий метод для выполнения запросов
+
+    def _fetch_data(self, query, last_update):
+        # Общий метод для выполнения запросов
+        with psycopg2.connect(**self.connection_params) as conn:
+            with conn.cursor(cursor_factory=DictCursor) as cursor:
+                cursor.execute(query, (last_update,))
+                return cursor.fetchall()
+
 
 # Путь к файлу состояния
 state_file_path = 'etl/etl_state.json'
@@ -58,13 +108,16 @@ state_file_path = 'etl/etl_state.json'
 # Создание объекта для управления состоянием
 state_manager = State(JsonFileStorage(state_file_path))
 
-# Создание экземпляра PostgresProducer
-producer = PostgresProducer(postgres_config, state_manager)
-
 # Извлечение обновлённых ID и обновление состояния
+# Основной код для запуска ETL процесса
 if __name__ == "__main__":
-    updated_ids = producer.fetch_updated_ids()
-    if updated_ids:
-        # Пример обновления состояния, используя последнее время обновления из выборки
-        last_time = updated_ids[-1][1]
-        producer.update_state(last_time)
+    # Инициализация класса с параметрами подключения и менеджером состояния
+    producer = PostgresProducer(postgres_config, state_manager)
+
+    # Запрашиваем последнее обновление из состояния ETL
+    last_update = state_manager.get_state('last_update') or datetime.min
+
+    # Извлечение данных о фильмах, персонах и жанрах
+    movies = producer.fetch_movies(last_update)
+    persons = producer.fetch_persons(last_update)
+    genres = producer.fetch_genres(last_update)

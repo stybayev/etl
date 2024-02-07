@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+
+import psycopg2
 from pydantic_settings import BaseSettings
 from pydantic.networks import PostgresDsn
 
@@ -25,3 +28,24 @@ class PostgresConfig(BaseSettings):
             port=str(self.port),
             path=f"/{self.dbname}"
         )
+
+
+class LoggingConfig(BaseSettings):
+    """
+    Конфигурация логирования
+    """
+    level: str = 'INFO'
+    format: str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+    class Config:
+        env_prefix = 'LOGGING_'
+
+
+# Контекст для подключения к Postgres
+@contextmanager
+def pg_connection(connection_params: dict):
+    conn = psycopg2.connect(**connection_params)
+    try:
+        yield conn
+    finally:
+        conn.close()
