@@ -49,3 +49,9 @@ def pg_connection(connection_params: dict):
         yield conn
     finally:
         conn.close()
+
+
+def chunks(lst, n):
+    # Функция для разделения списка на пачки определенного размера
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]

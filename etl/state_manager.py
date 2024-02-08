@@ -33,6 +33,8 @@ class State:
         self.storage = storage
 
     def set_state(self, key: str, value: Any) -> None:
+        if isinstance(value, datetime):
+            value = value.isoformat()
         state = self.storage.retrieve_state()
         state[key] = value
         self.storage.save_state(state)
@@ -40,6 +42,4 @@ class State:
     def get_state(self, key: str) -> Any:
         state = self.storage.retrieve_state()
         value = state.get(key, None)
-        if key == 'last_processed_time' and value:
-            return datetime.fromisoformat(value)
         return value
