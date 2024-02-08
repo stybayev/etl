@@ -38,12 +38,12 @@ def main():
         # Извлечение деталей о фильмах
         if related_film_works_list:
             film_work_details = merger.fetch_film_work_details(related_film_works_list)
-            print(f'Film work details: {film_work_details}')
+            # print(f'Film work details: {film_work_details}')
 
             # Преобразование данных
 
             transformed_data = transform_film_work_details(film_work_details)
-            print(f'Transformed data: {transformed_data}')
+            # print(f'Transformed data: {transformed_data}')
 
             # Здесь должен быть код для загрузки данных в Elasticsearch
 

@@ -30,13 +30,16 @@ class FilmWork(BaseModel):
 
 
 def transform_film_work_details(film_work_data: List) -> List[Dict[str, Any]]:
+    """
+    Преобразование данных о фильмах
+    """
     transformed_data = []
     film_works = defaultdict(dict)
 
     for entry in film_work_data:
         fw_id = entry['fw_id']
         role = entry['role']
-        person_id = str(entry['id'])
+        person_id = str(entry['person_id'])
         full_name = entry['full_name']
         name = entry['name']
 
@@ -48,7 +51,7 @@ def transform_film_work_details(film_work_data: List) -> List[Dict[str, Any]]:
                 "genre": [],
                 "title": entry['title'],
                 "description": entry['description'] if entry['description'] is not None else '',
-                "director": '',  # Assuming director needs to be fetched separately
+                "director": '',
                 "actors_names": [],
                 "writers_names": [],
                 "actors": [],
@@ -70,7 +73,6 @@ def transform_film_work_details(film_work_data: List) -> List[Dict[str, Any]]:
                 film_works[fw_id]["writers_names"].append(full_name)
 
         # Присвоение режиссера его фильму
-
         if entry['role'] == 'director':
             film_works[entry['fw_id']]['director'] = entry['full_name']
 

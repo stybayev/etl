@@ -64,7 +64,7 @@ class PostgresMerger(PostgresBase):
             fw.created_at, 
             fw.updated_at, 
             pfw.role, 
-            p.id, 
+            p.id as person_id, 
             p.full_name,
             g.name
         FROM content.film_work fw
