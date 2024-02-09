@@ -2,8 +2,7 @@ FROM python:3.11-slim-buster
 
 # Environment variables
 # Python
-ENV DJANGO_ENV=${DJANGO_ENV} \
-    PYTHONFAULTHANDLER=1 \
+ENV PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random
 # Pip
@@ -23,9 +22,6 @@ RUN apt-get update -q && \
 
 # Set working directory
 WORKDIR /code
-
-# Create necessary directories
-RUN mkdir -p /code/media /code/static
 
 # Copy only the pyproject.toml first
 COPY ./pyproject.toml /code/

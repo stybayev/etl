@@ -97,42 +97,47 @@ def update_genres_in_batches(producer, inricher, merger, es_loader, state_manage
         state_manager.set_state(f'last_genre_update_batch_{batch_start}-{batch_end}', max_updated_at.isoformat())
 
 
+import time
+
 def main():
     """
     Основной код ETL процесса
     """
-
     # Инициализация менеджера состояний
-    state_manager = State(JsonFileStorage('etl/etl_state.json'))
+    state_manager = State(JsonFileStorage('etl_state.json'))
 
     # Инициализация ETL процесса
     producer = PostgresProducer(postgres_config, state_manager)
     inricher = PostgresInricher(postgres_config)
     merger = PostgresMerger(postgres_config)
-
-    # Запуск ETL процесса
     es_loader = ElasticsearchLoader(elasticsearch_config.host)
 
-    try:
-        # Обновление данных о фильмах
-        last_film_update = update_films(producer, merger, es_loader)
-        if last_film_update:
-            state_manager.set_state('last_film_update', last_film_update.isoformat())
+    while True:
+        try:
+            # Обновление данных о фильмах
+            last_film_update = update_films(producer, merger, es_loader)
+            if last_film_update:
+                state_manager.set_state('last_film_update', last_film_update.isoformat())
 
-        # Обновление данных о персонах
-        last_person_update = update_persons(producer, inricher, merger, es_loader)
-        if last_person_update:
-            state_manager.set_state('last_person_update', last_person_update.isoformat())
+            # Обновление данных о персонах
+            last_person_update = update_persons(producer, inricher, merger, es_loader)
+            if last_person_update:
+                state_manager.set_state('last_person_update', last_person_update.isoformat())
 
-        # Обновление данных о жанрах пакетами
-        batch_size = 100
+            # Обновление данных о жанрах пакетами
+            batch_size = 100
+            update_genres_in_batches(producer, inricher, merger, es_loader, state_manager, batch_size)
 
-        update_genres_in_batches(producer, inricher, merger, es_loader, state_manager, batch_size)
-        # Обратите внимание, что состояние для последнего обновления жанра устанавливается внутри функции update_genres_in_batches
+        except Exception as e:
+            logger.error(f'Произошла ошибка во время ETL процесса: {e}')
+            # Здесь может быть код для обработки ошибок, например, повторное соединение или оповещение
 
-    except Exception as e:
-        logger.error(f'Произошла ошибка во время ETL процесса: {e}')
-        # Здесь может быть код для обработки ошибок, например, повторное соединение или оповещение
+        # Пауза перед следующим циклом обновления
+        logger.info('Waiting for the next update cycle...')
+        time.sleep(5)  # Пауза на 1 час
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

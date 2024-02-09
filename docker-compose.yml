@@ -1,5 +1,18 @@
 version: '3.7'
 services:
+
+#  app:
+#    build: ./etl
+#    container_name: my_app
+#    volumes:
+#      - ./etl:/code
+#    command: ./start.sh
+#    restart: always
+#    env_file:
+#      - ./etl/.env
+#    networks:
+#      - esnet
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.6.2
     container_name: elasticsearch
