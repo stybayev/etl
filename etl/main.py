@@ -64,6 +64,33 @@ def update_persons(producer, inricher, merger, es_loader):
     return max(person['updated_at'] for person in updated_person_ids)
 
 
+def update_genres(producer, inricher, merger, es_loader, state_manager):
+    """
+    Обновление данных о жанрах и связанных с ними фильмах
+    """
+    updated_genre_ids = producer.fetch_updated_genres()
+    if not updated_genre_ids:
+        logger.info('No genre updates found.')
+        return
+
+    related_film_works = inricher.fetch_related_film_works_by_genre([genre['id'] for genre in updated_genre_ids])
+    if not related_film_works:
+        logger.info('No film works related to the updated genres found.')
+        return
+
+    film_work_details = merger.fetch_film_work_details([fw['id'] for fw in related_film_works])
+    transformed_data = transform_film_work_details(film_work_details)
+
+    try:
+        es_loader.bulk_load("movies", transformed_data)
+        logger.info(f'Successfully loaded {len(transformed_data)} films related to updated genres into Elasticsearch.')
+    except Exception as e:
+        logger.error(f'Failed to load film data related to updated genres into Elasticsearch: {e}')
+        raise
+
+    return max(genre['updated_at'] for genre in updated_genre_ids)
+
+
 def main():
     """
     Основной код ETL процесса
@@ -88,6 +115,10 @@ def main():
         last_person_update = update_persons(producer, inricher, merger, es_loader)
         if last_person_update:
             state_manager.set_state('last_person_update', last_person_update.isoformat())
+
+        last_genre_update = update_genres(producer, inricher, merger, es_loader, state_manager)
+        if last_genre_update:
+            state_manager.set_state('last_genre_update', last_genre_update.isoformat())
 
     except Exception as e:
         logger.error(f'An error occurred during the ETL process: {e}')

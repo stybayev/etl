@@ -13,7 +13,7 @@ class Actor(BaseModel):
 
 class Writer(BaseModel):
     id: str
-    name: str
+    name: Optional[str]  # Разрешаем None для имени писателя
 
 
 class FilmWork(BaseModel):
@@ -24,7 +24,7 @@ class FilmWork(BaseModel):
     description: Optional[str] = ''
     director: Optional[str]
     actors_names: List[str]
-    writers_names: List[str]
+    writers_names: List[Optional[str]]
     actors: List[Actor]
     writers: List[Writer]
 

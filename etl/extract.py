@@ -41,6 +41,23 @@ class PostgresInricher(PostgresBase):
                 """
         return self._fetch_data(query, (str_person_ids,))
 
+    def fetch_related_film_works_by_genre(self, genre_ids):
+        """
+        Получение списка фильмов, связанных с определёнными жанрами.
+        """
+        # Преобразование строк в UUID
+        str_genre_ids = [str(id) for id in genre_ids]
+
+        query = """
+                SELECT DISTINCT fw.id, fw.updated_at
+                FROM content.film_work fw
+                JOIN content.genre_film_work gfw ON gfw.film_work_id = fw.id
+                WHERE gfw.genre_id = ANY(%s::uuid[])
+                ORDER BY fw.updated_at
+                LIMIT 100;
+                """
+        return self._fetch_data(query, (str_genre_ids,))
+
 
 class PostgresMerger(PostgresBase):
     """
@@ -96,8 +113,8 @@ class PostgresProducer(PostgresBase):
         SELECT id, updated_at
         FROM content.film_work
         WHERE updated_at > %s
-        ORDER BY updated_at
-        LIMIT 100;
+        ORDER BY updated_at;
+       
         """
         return self._fetch_data(query, (last_film_update,))
 
@@ -114,3 +131,17 @@ class PostgresProducer(PostgresBase):
         LIMIT 100;
         """
         return self._fetch_data(query, (last_person_update,))
+
+    def fetch_updated_genres(self):
+        """
+        Получение обновленных данных о жанрах.
+        """
+        last_genre_update = self.state_manager.get_state('last_genre_update') or datetime.min
+        query = """
+        SELECT id, updated_at
+        FROM content.genre
+        WHERE updated_at > %s
+        ORDER BY updated_at
+        LIMIT 100;
+        """
+        return self._fetch_data(query, (last_genre_update,))
