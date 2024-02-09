@@ -5,6 +5,8 @@ import logging
 from configs import PostgresConfig, LoggingConfig, ElasticsearchConfig
 from state_manager import State, JsonFileStorage
 from dotenv import load_dotenv
+import time
+from typing import Optional
 
 # Загрузка конфигурации
 load_dotenv()
@@ -18,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 # Основной код ETL процесса
-def update_films(producer, merger, es_loader):
+def update_films(producer: PostgresProducer,
+                 merger: PostgresMerger,
+                 es_loader: ElasticsearchLoader) -> Optional[int]:
     """
     Обновление данных о фильмах
     """
@@ -40,7 +44,7 @@ def update_films(producer, merger, es_loader):
     return max(film['updated_at'] for film in updated_film_work_ids)
 
 
-def update_persons(producer, inricher, merger, es_loader):
+def update_persons(producer, inricher, merger, es_loader) -> Optional[int]:
     """
     Обновление данных о персонах
     """
@@ -64,42 +68,34 @@ def update_persons(producer, inricher, merger, es_loader):
     return max(person['updated_at'] for person in updated_person_ids)
 
 
-def update_genres_in_batches(producer, inricher, merger, es_loader, state_manager, batch_size=100):
+def update_genres(producer: PostgresProducer,
+                  inricher: PostgresInricher,
+                  merger: PostgresMerger,
+                  es_loader: ElasticsearchLoader) -> Optional[int]:
     """
-    Обновление данных о жанрах и связанных с ними фильмах пакетами
+    Обновление данных о жанрах и связанных с ними фильмах
     """
     updated_genre_ids = producer.fetch_updated_genres()
     if not updated_genre_ids:
         logger.info('No genre updates found.')
         return
 
-    for batch_start in range(0, len(updated_genre_ids), batch_size):
-        batch_end = batch_start + batch_size
-        genre_id_batch = updated_genre_ids[batch_start:batch_end]
+    related_film_works = inricher.fetch_related_film_works_by_genre([genre['id'] for genre in updated_genre_ids])
+    film_work_details = merger.fetch_film_work_details([fw['id'] for fw in related_film_works])
 
-        related_film_works = inricher.fetch_related_film_works_by_genre([genre['id'] for genre in genre_id_batch])
-        if not related_film_works:
-            logger.info(f'No film works related to genres in batch {batch_start}-{batch_end} found.')
-            continue
+    transformed_data = transform_film_work_details(film_work_details)
 
-        film_work_details = merger.fetch_film_work_details([fw['id'] for fw in related_film_works])
-        transformed_data = transform_film_work_details(film_work_details)
+    try:
+        es_loader.bulk_load("movies", transformed_data)
+        logger.info(f'Successfully loaded related films for updated genres to Elasticsearch.')
+    except Exception as e:
+        logger.error(f'Failed to load genre-related film data into Elasticsearch: {e}')
+        raise
 
-        try:
-            es_loader.bulk_load("movies", transformed_data)
-            logger.info(
-                f'Successfully loaded {len(transformed_data)} films for genres batch {batch_start}-{batch_end} into Elasticsearch.')
-        except Exception as e:
-            logger.error(f'Failed to load film data for genres batch {batch_start}-{batch_end} into Elasticsearch: {e}')
-            raise
-
-        max_updated_at = max(genre['updated_at'] for genre in genre_id_batch)
-        state_manager.set_state(f'last_genre_update_batch_{batch_start}-{batch_end}', max_updated_at.isoformat())
+    return max(genre['updated_at'] for genre in updated_genre_ids)
 
 
-import time
-
-def main():
+def main() -> None:
     """
     Основной код ETL процесса
     """
@@ -124,20 +120,19 @@ def main():
             if last_person_update:
                 state_manager.set_state('last_person_update', last_person_update.isoformat())
 
-            # Обновление данных о жанрах пакетами
-            batch_size = 100
-            update_genres_in_batches(producer, inricher, merger, es_loader, state_manager, batch_size)
+            #  Обновление данных о жанрах пакетами
+            last_genre_update = update_genres(producer, inricher, merger, es_loader)
+            if last_genre_update:
+                state_manager.set_state('last_genre_update', last_genre_update.isoformat())
+
+
 
         except Exception as e:
             logger.error(f'Произошла ошибка во время ETL процесса: {e}')
-            # Здесь может быть код для обработки ошибок, например, повторное соединение или оповещение
 
         # Пауза перед следующим циклом обновления
-        logger.info('Waiting for the next update cycle...')
-        time.sleep(5)  # Пауза на 1 час
-
-if __name__ == "__main__":
-    main()
+        logger.info('Ожидание следующего цикла обновления...')
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":

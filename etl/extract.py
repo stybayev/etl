@@ -1,6 +1,10 @@
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import DictCursor
+from typing import List
+
+from state_manager import State
+from utils import backoff
 
 
 class PostgresBase:
@@ -8,10 +12,11 @@ class PostgresBase:
     Базовый класс для работы с Postgres
     """
 
-    def __init__(self, connection_params):
+    def __init__(self, connection_params: dict) -> None:
         self.connection_params = connection_params
 
-    def _fetch_data(self, query, params):
+    @backoff(start_sleep_time=0.1, factor=2, border_sleep_time=10)
+    def _fetch_data(self, query, params) -> list:
         with psycopg2.connect(**self.connection_params) as conn:
             with conn.cursor(cursor_factory=DictCursor) as cursor:
                 cursor.execute(query, params)
@@ -23,7 +28,7 @@ class PostgresInricher(PostgresBase):
     Класс для получения подробной информации о фильмах и персонах
     """
 
-    def fetch_related_film_works(self, person_ids):
+    def fetch_related_film_works(self, person_ids: List[str]) -> list:
         """
         Получение списка фильмов, в которых участвует персона
         """
@@ -41,7 +46,7 @@ class PostgresInricher(PostgresBase):
                 """
         return self._fetch_data(query, (str_person_ids,))
 
-    def fetch_related_film_works_by_genre(self, genre_ids):
+    def fetch_related_film_works_by_genre(self, genre_ids: List[str]) -> list:
         """
         Получение списка фильмов, связанных с определёнными жанрами.
         """
@@ -64,7 +69,7 @@ class PostgresMerger(PostgresBase):
     Класс для получения подробной информации о фильмах
     """
 
-    def fetch_film_work_details(self, film_work_ids):
+    def fetch_film_work_details(self, film_work_ids: List[str]) -> list:
         """
         Получение подробной информации о фильме
         """
@@ -100,11 +105,12 @@ class PostgresProducer(PostgresBase):
     Класс для получения обновленных ID
     """
 
-    def __init__(self, connection_params, state_manager):
+    def __init__(self, connection_params: dict,
+                 state_manager: State) -> None:
         super().__init__(connection_params)
         self.state_manager = state_manager
 
-    def fetch_updated_film_work_ids(self):
+    def fetch_updated_film_work_ids(self) -> list:
         """
         Получение обновленных ID фильмов.
         """
@@ -113,12 +119,12 @@ class PostgresProducer(PostgresBase):
         SELECT id, updated_at
         FROM content.film_work
         WHERE updated_at > %s
-        ORDER BY updated_at;
-       
+        ORDER BY updated_at
+        LIMIT 100;
         """
         return self._fetch_data(query, (last_film_update,))
 
-    def fetch_updated_person_ids(self):
+    def fetch_updated_person_ids(self) -> list:
         """
         Получение обновленных ID персон
         """
@@ -132,7 +138,7 @@ class PostgresProducer(PostgresBase):
         """
         return self._fetch_data(query, (last_person_update,))
 
-    def fetch_updated_genres(self):
+    def fetch_updated_genres(self) -> list:
         """
         Получение обновленных данных о жанрах.
         """

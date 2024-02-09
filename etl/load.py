@@ -1,17 +1,19 @@
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 import logging
+from utils import backoff
 
 
 class ElasticsearchLoader:
     """
     Класс для загрузки данных в Elasticsearch
     """
-    def __init__(self, es_host):
+    def __init__(self, es_host: str) -> None:
         self.es = Elasticsearch(es_host)
         self.logger = logging.getLogger('elasticsearch_loader')
 
-    def bulk_load(self, index, data):
+    @backoff(start_sleep_time=0.1, factor=2, border_sleep_time=10)
+    def bulk_load(self, index: str, data: list) -> int:
         """
         Загрузка данных в Elasticsearch
         """

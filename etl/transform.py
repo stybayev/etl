@@ -64,13 +64,15 @@ def transform_film_work_details(film_work_data: List) -> List[Dict[str, Any]]:
 
         # Добавляем актеров и режиссеров к фильму
         if role == 'actor':
-            if person_id not in film_works[fw_id]["actors"]:
+            if person_id not in [actor['id'] for actor in film_works[fw_id]["actors"]]:
                 film_works[fw_id]["actors"].append({"id": person_id, "name": full_name})
-                film_works[fw_id]["actors_names"].append(full_name)
+                if full_name not in film_works[fw_id]["actors_names"]:
+                    film_works[fw_id]["actors_names"].append(full_name)
         elif role == 'writer':
-            if person_id not in film_works[fw_id]["writers"]:
+            if person_id not in [writer['id'] for writer in film_works[fw_id]["writers"]]:
                 film_works[fw_id]["writers"].append({"id": person_id, "name": full_name})
-                film_works[fw_id]["writers_names"].append(full_name)
+                if full_name not in film_works[fw_id]["writers_names"]:
+                    film_works[fw_id]["writers_names"].append(full_name)
 
         # Присвоение режиссера его фильму
         if entry['role'] == 'director':
