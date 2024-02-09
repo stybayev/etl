@@ -1,7 +1,6 @@
 from load import ElasticsearchLoader
 from extract import PostgresProducer, PostgresInricher, PostgresMerger
 from transform import transform_film_work_details
-from datetime import datetime
 import logging
 from configs import PostgresConfig, LoggingConfig, ElasticsearchConfig
 from state_manager import State, JsonFileStorage
@@ -19,45 +18,79 @@ logger = logging.getLogger(__name__)
 
 
 # Основной код ETL процесса
+def update_films(producer, merger, es_loader):
+    """
+    Обновление данных о фильмах
+    """
+    updated_film_work_ids = producer.fetch_updated_film_work_ids()
+    if not updated_film_work_ids:
+        logger.info('No film updates found.')
+        return
+
+    film_work_details = merger.fetch_film_work_details([film['id'] for film in updated_film_work_ids])
+    transformed_data = transform_film_work_details(film_work_details)
+
+    try:
+        es_loader.bulk_load("movies", transformed_data)
+        logger.info(f'Successfully loaded {len(transformed_data)} films to Elasticsearch.')
+    except Exception as e:
+        logger.error(f'Failed to load film data into Elasticsearch: {e}')
+        raise
+
+    return max(film['updated_at'] for film in updated_film_work_ids)
+
+
+def update_persons(producer, inricher, merger, es_loader):
+    """
+    Обновление данных о персонах
+    """
+    updated_person_ids = producer.fetch_updated_person_ids()
+    if not updated_person_ids:
+        logger.info('No person updates found.')
+        return
+
+    related_film_works = inricher.fetch_related_film_works([person['id'] for person in updated_person_ids])
+    film_work_details = merger.fetch_film_work_details([fw['id'] for fw in related_film_works])
+
+    transformed_data = transform_film_work_details(film_work_details)
+
+    try:
+        es_loader.bulk_load("movies", transformed_data)
+        logger.info(f'Successfully loaded related films to Elasticsearch.')
+    except Exception as e:
+        logger.error(f'Failed to load person-related film data into Elasticsearch: {e}')
+        raise
+
+    return max(person['updated_at'] for person in updated_person_ids)
+
+
 def main():
-    # Создание объекта для управления состоянием
+    """
+    Основной код ETL процесса
+    """
+
+    # Инициализация менеджера состояний
     state_manager = State(JsonFileStorage('etl/etl_state.json'))
 
-    # Инициализация классов с параметрами подключения
+    # Инициализация ETL процесса
     producer = PostgresProducer(postgres_config, state_manager)
     inricher = PostgresInricher(postgres_config)
     merger = PostgresMerger(postgres_config)
 
-    # Создание объекта загрузчика Elasticsearch
+    # Запуск ETL процесса
     es_loader = ElasticsearchLoader(elasticsearch_config.host)
 
-    # Извлечение обновлённых ID персон
-    updated_person_ids = producer.fetch_updated_person_ids()
-    updated_person_ids_list = [person['id'] for person in updated_person_ids]
+    try:
+        last_film_update = update_films(producer, merger, es_loader)
+        if last_film_update:
+            state_manager.set_state('last_film_update', last_film_update.isoformat())
 
-    # Извлечение связанных фильмов
-    if updated_person_ids_list:
-        related_film_works = inricher.fetch_related_film_works(updated_person_ids_list)
-        related_film_works_list = [fw['id'] for fw in related_film_works]
+        last_person_update = update_persons(producer, inricher, merger, es_loader)
+        if last_person_update:
+            state_manager.set_state('last_person_update', last_person_update.isoformat())
 
-        # Извлечение деталей о фильмах
-        if related_film_works_list:
-            film_work_details = merger.fetch_film_work_details(related_film_works_list)
-            # print(f'Film work details: {film_work_details}')
-
-            # Преобразование данных
-
-            transformed_data = transform_film_work_details(film_work_details)
-            # print(f'Transformed data: {transformed_data}, len: {len(transformed_data)}')
-
-            # Здесь должен быть код для загрузки данных в Elasticsearch
-            try:
-                es_loader.bulk_load("movies", transformed_data)
-            except Exception as e:
-                logger.error(f'Failed to load data into Elasticsearch: {e}')
-
-    # Обновление состояния
-    state_manager.set_state('last_person_update', datetime.now().isoformat())
+    except Exception as e:
+        logger.error(f'An error occurred during the ETL process: {e}')
 
 
 if __name__ == "__main__":

@@ -87,6 +87,20 @@ class PostgresProducer(PostgresBase):
         super().__init__(connection_params)
         self.state_manager = state_manager
 
+    def fetch_updated_film_work_ids(self):
+        """
+        Получение обновленных ID фильмов.
+        """
+        last_film_update = self.state_manager.get_state('last_film_update') or datetime.min
+        query = """
+        SELECT id, updated_at
+        FROM content.film_work
+        WHERE updated_at > %s
+        ORDER BY updated_at
+        LIMIT 100;
+        """
+        return self._fetch_data(query, (last_film_update,))
+
     def fetch_updated_person_ids(self):
         """
         Получение обновленных ID персон
