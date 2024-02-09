@@ -1,8 +1,9 @@
+from load import ElasticsearchLoader
 from extract import PostgresProducer, PostgresInricher, PostgresMerger
 from transform import transform_film_work_details
 from datetime import datetime
 import logging
-from configs import PostgresConfig, LoggingConfig
+from configs import PostgresConfig, LoggingConfig, ElasticsearchConfig
 from state_manager import State, JsonFileStorage
 from dotenv import load_dotenv
 
@@ -10,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 postgres_config = PostgresConfig().dict()
 logging_config = LoggingConfig()
+elasticsearch_config = ElasticsearchConfig()
 
 # Настройка логирования
 logging.basicConfig(level=getattr(logging, logging_config.level), format=logging_config.format)
@@ -25,6 +27,9 @@ def main():
     producer = PostgresProducer(postgres_config, state_manager)
     inricher = PostgresInricher(postgres_config)
     merger = PostgresMerger(postgres_config)
+
+    # Создание объекта загрузчика Elasticsearch
+    es_loader = ElasticsearchLoader(elasticsearch_config.host)
 
     # Извлечение обновлённых ID персон
     updated_person_ids = producer.fetch_updated_person_ids()
@@ -43,9 +48,13 @@ def main():
             # Преобразование данных
 
             transformed_data = transform_film_work_details(film_work_details)
-            # print(f'Transformed data: {transformed_data}')
+            # print(f'Transformed data: {transformed_data}, len: {len(transformed_data)}')
 
             # Здесь должен быть код для загрузки данных в Elasticsearch
+            try:
+                es_loader.bulk_load("movies", transformed_data)
+            except Exception as e:
+                logger.error(f'Failed to load data into Elasticsearch: {e}')
 
     # Обновление состояния
     state_manager.set_state('last_person_update', datetime.now().isoformat())

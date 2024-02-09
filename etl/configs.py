@@ -30,6 +30,13 @@ class PostgresConfig(BaseSettings):
         )
 
 
+class ElasticsearchConfig(BaseSettings):
+    host: str
+
+    class Config:
+        env_prefix = 'ELASTICSEARCH_'
+
+
 class LoggingConfig(BaseSettings):
     """
     Конфигурация логирования
