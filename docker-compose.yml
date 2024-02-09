@@ -1,17 +1,24 @@
 version: '3.7'
 services:
 
-#  app:
-#    build: ./etl
-#    container_name: my_app
-#    volumes:
-#      - ./etl:/code
-#    command: ./start.sh
-#    restart: always
-#    env_file:
-#      - ./etl/.env
-#    networks:
-#      - esnet
+  app:
+    build: ./etl
+    container_name: my_app
+    volumes:
+      - ./etl:/code
+    command: ./start.sh
+    restart: always
+    env_file:
+      - ./etl/.env
+    networks:
+      - esnet
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_DB=movies_database
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=123qwe
+
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.6.2
