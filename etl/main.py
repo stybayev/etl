@@ -64,31 +64,37 @@ def update_persons(producer, inricher, merger, es_loader):
     return max(person['updated_at'] for person in updated_person_ids)
 
 
-def update_genres(producer, inricher, merger, es_loader, state_manager):
+def update_genres_in_batches(producer, inricher, merger, es_loader, state_manager, batch_size=100):
     """
-    Обновление данных о жанрах и связанных с ними фильмах
+    Обновление данных о жанрах и связанных с ними фильмах пакетами
     """
     updated_genre_ids = producer.fetch_updated_genres()
     if not updated_genre_ids:
         logger.info('No genre updates found.')
         return
 
-    related_film_works = inricher.fetch_related_film_works_by_genre([genre['id'] for genre in updated_genre_ids])
-    if not related_film_works:
-        logger.info('No film works related to the updated genres found.')
-        return
+    for batch_start in range(0, len(updated_genre_ids), batch_size):
+        batch_end = batch_start + batch_size
+        genre_id_batch = updated_genre_ids[batch_start:batch_end]
 
-    film_work_details = merger.fetch_film_work_details([fw['id'] for fw in related_film_works])
-    transformed_data = transform_film_work_details(film_work_details)
+        related_film_works = inricher.fetch_related_film_works_by_genre([genre['id'] for genre in genre_id_batch])
+        if not related_film_works:
+            logger.info(f'No film works related to genres in batch {batch_start}-{batch_end} found.')
+            continue
 
-    try:
-        es_loader.bulk_load("movies", transformed_data)
-        logger.info(f'Successfully loaded {len(transformed_data)} films related to updated genres into Elasticsearch.')
-    except Exception as e:
-        logger.error(f'Failed to load film data related to updated genres into Elasticsearch: {e}')
-        raise
+        film_work_details = merger.fetch_film_work_details([fw['id'] for fw in related_film_works])
+        transformed_data = transform_film_work_details(film_work_details)
 
-    return max(genre['updated_at'] for genre in updated_genre_ids)
+        try:
+            es_loader.bulk_load("movies", transformed_data)
+            logger.info(
+                f'Successfully loaded {len(transformed_data)} films for genres batch {batch_start}-{batch_end} into Elasticsearch.')
+        except Exception as e:
+            logger.error(f'Failed to load film data for genres batch {batch_start}-{batch_end} into Elasticsearch: {e}')
+            raise
+
+        max_updated_at = max(genre['updated_at'] for genre in genre_id_batch)
+        state_manager.set_state(f'last_genre_update_batch_{batch_start}-{batch_end}', max_updated_at.isoformat())
 
 
 def main():
@@ -108,20 +114,25 @@ def main():
     es_loader = ElasticsearchLoader(elasticsearch_config.host)
 
     try:
+        # Обновление данных о фильмах
         last_film_update = update_films(producer, merger, es_loader)
         if last_film_update:
             state_manager.set_state('last_film_update', last_film_update.isoformat())
 
+        # Обновление данных о персонах
         last_person_update = update_persons(producer, inricher, merger, es_loader)
         if last_person_update:
             state_manager.set_state('last_person_update', last_person_update.isoformat())
 
-        last_genre_update = update_genres(producer, inricher, merger, es_loader, state_manager)
-        if last_genre_update:
-            state_manager.set_state('last_genre_update', last_genre_update.isoformat())
+        # Обновление данных о жанрах пакетами
+        batch_size = 100
+
+        update_genres_in_batches(producer, inricher, merger, es_loader, state_manager, batch_size)
+        # Обратите внимание, что состояние для последнего обновления жанра устанавливается внутри функции update_genres_in_batches
 
     except Exception as e:
-        logger.error(f'An error occurred during the ETL process: {e}')
+        logger.error(f'Произошла ошибка во время ETL процесса: {e}')
+        # Здесь может быть код для обработки ошибок, например, повторное соединение или оповещение
 
 
 if __name__ == "__main__":
