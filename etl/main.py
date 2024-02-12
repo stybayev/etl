@@ -44,7 +44,7 @@ def update_films(producer: PostgresProducer,
                     f'films to Elasticsearch.')
 
     except Exception as e:
-        logger.error(f'Failed to load film data into Elasticsearch: {e}')
+        logger.debug('Failed to load film data into Elasticsearch: %s', e)
         raise
 
     return max(film['updated_at'] for film in updated_film_work_ids)
@@ -72,8 +72,8 @@ def update_persons(producer, inricher, merger, es_loader) -> Optional[int]:
         logger.info('Successfully loaded related '
                     'films to Elasticsearch.')
     except Exception as e:
-        logger.error(f'Failed to load person-related '
-                     f'film data into Elasticsearch: {e}')
+        logger.debug('Failed to load person-related film '
+                     'data into Elasticsearch: %s', e)
         raise
 
     return max(person['updated_at'] for person in updated_person_ids)
@@ -104,8 +104,8 @@ def update_genres(producer: PostgresProducer,
         logger.info('Successfully loaded related '
                     'films for updated genres to Elasticsearch.')
     except Exception as e:
-        logger.error(f'Failed to load genre-related '
-                     f'film data into Elasticsearch: {e}')
+        logger.debug('Failed to load genre-related '
+                     'film data into Elasticsearch: %s', e)
         raise
 
     return max(genre['updated_at'] for genre in updated_genre_ids)
@@ -151,7 +151,7 @@ def main() -> None:
                                         last_genre_update.isoformat())
 
         except Exception as e:
-            logger.error(f'Произошла ошибка во время ETL процесса: {e}')
+            logger.debug('Произошла ошибка во время ETL процесса: %s', e)
 
         # Пауза перед следующим циклом обновления
         logger.info('Ожидание следующего цикла обновления...')

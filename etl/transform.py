@@ -103,12 +103,12 @@ def transform_film_work_details(film_work_data: List) -> List[Dict[str, Any]]:
             transformed_data.append(validated_data.dict())
         except ValidationError as e:
             # Логирование ошибок валидации
-            logger.error(f'Data validation error '
-                         f'for film work ID {fw_id}: {e.json()}')
+            logger.debug('Data validation error '
+                         'for film work ID %s: %s', fw_id, e)
             raise e
         except Exception as e:
             # Логирование непредвиденных ошибок
-            logger.error(f'Unexpected error for film work ID {fw_id}: {e}')
+            logger.debug('Unexpected error for film work ID %s: %s', fw_id, e)
             raise e
 
     return transformed_data

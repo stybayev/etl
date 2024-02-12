@@ -31,5 +31,5 @@ class ElasticsearchLoader:
             self.logger.info(f'Successfully indexed {success} documents')
             return success
         except Exception as e:
-            self.logger.error(f'Error during bulk index: {e}')
+            self.logger.debug('Error during bulk index: %s', e)
             raise
