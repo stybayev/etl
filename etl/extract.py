@@ -1,8 +1,7 @@
 from datetime import datetime
-import psycopg2
 from psycopg2.extras import DictCursor
 from typing import List
-
+from configs import pg_connection
 from state_manager import State
 from utils import backoff
 
@@ -17,7 +16,7 @@ class PostgresBase:
 
     @backoff(start_sleep_time=0.1, factor=2, border_sleep_time=10)
     def _fetch_data(self, query, params) -> list:
-        with psycopg2.connect(**self.connection_params) as conn:
+        with pg_connection(self.connection_params) as conn:
             with conn.cursor(cursor_factory=DictCursor) as cursor:
                 cursor.execute(query, params)
                 return cursor.fetchall()
