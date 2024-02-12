@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def backoff(start_sleep_time: int = 0.1,
+def backoff(start_sleep_time: float = 0.1,
             factor: int = 2,
             border_sleep_time: int = 10) -> callable:
     """
