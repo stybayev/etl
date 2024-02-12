@@ -19,5 +19,5 @@ __pycache__
 **/uploads/
 **/static/
 **/data/
+etl/etl_state.json
 **/etl_state.json
-
