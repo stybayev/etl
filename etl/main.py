@@ -1,3 +1,4 @@
+from utils import create_etl_state_json
 from load import ElasticsearchLoader
 from extract import PostgresProducer, PostgresInricher, PostgresMerger
 from transform import transform_film_work_details
@@ -115,6 +116,10 @@ def main() -> None:
     """
     Основной код ETL процесса
     """
+
+    # Создание файла состояний etl_state.json
+    create_etl_state_json(file_path='etl_state.json')
+
     # Инициализация менеджера состояний
     state_manager = State(JsonFileStorage('etl_state.json'))
 
