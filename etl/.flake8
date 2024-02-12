@@ -1,0 +1,21 @@
+[flake8]
+ignore = E226, E302, E41, EXE002, A003, W503 **/migrations/** ALL
+max-line-length = 120
+exclude =
+  tests*,
+  */migrations/*,
+  admin_panel/*,
+  .git,
+  __pycache__,
+  .venv,
+  build
+  tests/fixtures/*
+  .DS_Store
+  .env
+  *.pot,
+  *.py[co],
+  data_gen.py
+  run_listener.py
+  __init__.py
+
+max-complexity = 3

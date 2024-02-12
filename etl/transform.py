@@ -47,10 +47,14 @@ def transform_film_work_details(film_work_data: List) -> List[Dict[str, Any]]:
         if fw_id not in film_works:
             film_works[fw_id] = {
                 "id": fw_id,
-                "imdb_rating": float(entry['rating']) if entry['rating'] is not None else None,
+                "imdb_rating": float(entry['rating'])
+                if entry['rating'] is not None else None,
+
                 "genre": [],
                 "title": entry['title'],
-                "description": entry['description'] if entry['description'] is not None else '',
+                "description": entry['description']
+                if entry['description'] is not None else '',
+
                 "director": '',
                 "actors_names": [],
                 "writers_names": [],
@@ -64,13 +68,17 @@ def transform_film_work_details(film_work_data: List) -> List[Dict[str, Any]]:
 
         # Добавляем актеров и режиссеров к фильму
         if role == 'actor':
-            if person_id not in [actor['id'] for actor in film_works[fw_id]["actors"]]:
-                film_works[fw_id]["actors"].append({"id": person_id, "name": full_name})
+            if person_id not in [actor['id']
+                                 for actor in film_works[fw_id]["actors"]]:
+                film_works[fw_id]["actors"].append({"id": person_id,
+                                                    "name": full_name})
                 if full_name not in film_works[fw_id]["actors_names"]:
                     film_works[fw_id]["actors_names"].append(full_name)
         elif role == 'writer':
-            if person_id not in [writer['id'] for writer in film_works[fw_id]["writers"]]:
-                film_works[fw_id]["writers"].append({"id": person_id, "name": full_name})
+            if person_id not in [writer['id']
+                                 for writer in film_works[fw_id]["writers"]]:
+                film_works[fw_id]["writers"].append({"id": person_id,
+                                                     "name": full_name})
                 if full_name not in film_works[fw_id]["writers_names"]:
                     film_works[fw_id]["writers_names"].append(full_name)
 
@@ -95,7 +103,8 @@ def transform_film_work_details(film_work_data: List) -> List[Dict[str, Any]]:
             transformed_data.append(validated_data.dict())
         except ValidationError as e:
             # Логирование ошибок валидации
-            logger.error(f"Data validation error for film work ID {fw_id}: {e.json()}")
+            logger.error(f"Data validation error "
+                         f"for film work ID {fw_id}: {e.json()}")
             raise e
         except Exception as e:
             # Логирование непредвиденных ошибок

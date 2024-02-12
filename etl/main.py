@@ -15,7 +15,9 @@ logging_config = LoggingConfig()
 elasticsearch_config = ElasticsearchConfig()
 
 # Настройка логирования
-logging.basicConfig(level=getattr(logging, logging_config.level), format=logging_config.format)
+logging.basicConfig(level=getattr(logging, logging_config.level),
+                    format=logging_config.format)
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,12 +33,16 @@ def update_films(producer: PostgresProducer,
         logger.info('No film updates found.')
         return
 
-    film_work_details = merger.fetch_film_work_details([film['id'] for film in updated_film_work_ids])
+    film_work_details = merger.fetch_film_work_details(
+        [film['id'] for film in updated_film_work_ids])
+
     transformed_data = transform_film_work_details(film_work_details)
 
     try:
         es_loader.bulk_load("movies", transformed_data)
-        logger.info(f'Successfully loaded {len(transformed_data)} films to Elasticsearch.')
+        logger.info(f'Successfully loaded {len(transformed_data)} '
+                    f'films to Elasticsearch.')
+
     except Exception as e:
         logger.error(f'Failed to load film data into Elasticsearch: {e}')
         raise
@@ -53,16 +59,21 @@ def update_persons(producer, inricher, merger, es_loader) -> Optional[int]:
         logger.info('No person updates found.')
         return
 
-    related_film_works = inricher.fetch_related_film_works([person['id'] for person in updated_person_ids])
-    film_work_details = merger.fetch_film_work_details([fw['id'] for fw in related_film_works])
+    related_film_works = inricher.fetch_related_film_works(
+        [person['id'] for person in updated_person_ids])
+
+    film_work_details = merger.fetch_film_work_details(
+        [fw['id'] for fw in related_film_works])
 
     transformed_data = transform_film_work_details(film_work_details)
 
     try:
         es_loader.bulk_load("movies", transformed_data)
-        logger.info(f'Successfully loaded related films to Elasticsearch.')
+        logger.info('Successfully loaded related '
+                    'films to Elasticsearch.')
     except Exception as e:
-        logger.error(f'Failed to load person-related film data into Elasticsearch: {e}')
+        logger.error(f'Failed to load person-related '
+                     f'film data into Elasticsearch: {e}')
         raise
 
     return max(person['updated_at'] for person in updated_person_ids)
@@ -80,16 +91,21 @@ def update_genres(producer: PostgresProducer,
         logger.info('No genre updates found.')
         return
 
-    related_film_works = inricher.fetch_related_film_works_by_genre([genre['id'] for genre in updated_genre_ids])
-    film_work_details = merger.fetch_film_work_details([fw['id'] for fw in related_film_works])
+    related_film_works = inricher.fetch_related_film_works_by_genre(
+        [genre['id'] for genre in updated_genre_ids])
+
+    film_work_details = merger.fetch_film_work_details(
+        [fw['id'] for fw in related_film_works])
 
     transformed_data = transform_film_work_details(film_work_details)
 
     try:
         es_loader.bulk_load("movies", transformed_data)
-        logger.info(f'Successfully loaded related films for updated genres to Elasticsearch.')
+        logger.info('Successfully loaded related '
+                    'films for updated genres to Elasticsearch.')
     except Exception as e:
-        logger.error(f'Failed to load genre-related film data into Elasticsearch: {e}')
+        logger.error(f'Failed to load genre-related '
+                     f'film data into Elasticsearch: {e}')
         raise
 
     return max(genre['updated_at'] for genre in updated_genre_ids)
@@ -113,19 +129,26 @@ def main() -> None:
             # Обновление данных о фильмах
             last_film_update = update_films(producer, merger, es_loader)
             if last_film_update:
-                state_manager.set_state('last_film_update', last_film_update.isoformat())
+                state_manager.set_state('last_film_update',
+                                        last_film_update.isoformat())
 
             # Обновление данных о персонах
-            last_person_update = update_persons(producer, inricher, merger, es_loader)
+            last_person_update = update_persons(producer,
+                                                inricher,
+                                                merger,
+                                                es_loader)
             if last_person_update:
-                state_manager.set_state('last_person_update', last_person_update.isoformat())
+                state_manager.set_state('last_person_update',
+                                        last_person_update.isoformat())
 
             #  Обновление данных о жанрах пакетами
-            last_genre_update = update_genres(producer, inricher, merger, es_loader)
+            last_genre_update = update_genres(producer,
+                                              inricher,
+                                              merger,
+                                              es_loader)
             if last_genre_update:
-                state_manager.set_state('last_genre_update', last_genre_update.isoformat())
-
-
+                state_manager.set_state('last_genre_update',
+                                        last_genre_update.isoformat())
 
         except Exception as e:
             logger.error(f'Произошла ошибка во время ETL процесса: {e}')

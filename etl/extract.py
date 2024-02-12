@@ -78,15 +78,15 @@ class PostgresMerger(PostgresBase):
 
         query = """
         SELECT
-            fw.id as fw_id, 
-            fw.title, 
-            fw.description, 
-            fw.rating, 
-            fw.type, 
-            fw.created_at, 
-            fw.updated_at, 
-            pfw.role, 
-            p.id as person_id, 
+            fw.id as fw_id,
+            fw.title,
+            fw.description,
+            fw.rating,
+            fw.type,
+            fw.created_at,
+            fw.updated_at,
+            pfw.role,
+            p.id as person_id,
             p.full_name,
             g.name
         FROM content.film_work fw
@@ -95,7 +95,6 @@ class PostgresMerger(PostgresBase):
         LEFT JOIN content.genre_film_work gfw ON gfw.film_work_id = fw.id
         LEFT JOIN content.genre g ON g.id = gfw.genre_id
         WHERE fw.id = ANY(%s::uuid[]);
-       
         """
         return self._fetch_data(query, (str_film_work_ids,))
 
@@ -114,7 +113,8 @@ class PostgresProducer(PostgresBase):
         """
         Получение обновленных ID фильмов.
         """
-        last_film_update = self.state_manager.get_state('last_film_update') or datetime.min
+        last_film_update = (self.state_manager.get_state('last_film_update')
+                            or datetime.min)
         query = """
         SELECT id, updated_at
         FROM content.film_work
@@ -128,7 +128,10 @@ class PostgresProducer(PostgresBase):
         """
         Получение обновленных ID персон
         """
-        last_person_update = self.state_manager.get_state('last_person_update') or datetime.min
+        last_person_update = (
+                self.state_manager.get_state('last_person_update')
+                or datetime.min
+        )
         query = """
         SELECT id, updated_at
         FROM content.person
@@ -142,7 +145,8 @@ class PostgresProducer(PostgresBase):
         """
         Получение обновленных данных о жанрах.
         """
-        last_genre_update = self.state_manager.get_state('last_genre_update') or datetime.min
+        last_genre_update = (self.state_manager.get_state('last_genre_update')
+                             or datetime.min)
         query = """
         SELECT id, updated_at
         FROM content.genre
