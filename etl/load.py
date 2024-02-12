@@ -19,9 +19,9 @@ class ElasticsearchLoader:
         """
         actions = [
             {
-                "_index": index,
-                "_id": movie_data['id'],
-                "_source": movie_data
+                '_index': index,
+                '_id': movie_data['id'],
+                '_source': movie_data
             }
             for movie_data in data
         ]

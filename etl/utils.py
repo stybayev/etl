@@ -20,9 +20,9 @@ def backoff(start_sleep_time: int = 0.1,
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    logger.info(f"Ошибка: {e}. "
-                                f"Повторное выполнение через "
-                                f"{sleep_time} секунд...")
+                    logger.info(f'Ошибка: {e}. '
+                                f'Повторное выполнение через '
+                                f'{sleep_time} секунд...')
                     time.sleep(sleep_time)
                     sleep_time = min(sleep_time * factor, border_sleep_time)
 

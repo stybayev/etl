@@ -21,12 +21,12 @@ class PostgresConfig(BaseSettings):
     @property
     def dsn(self) -> str:
         return PostgresDsn.build(
-            scheme="postgres",
+            scheme='postgres',
             user=self.user,
             password=self.password,
             host=self.host,
             port=str(self.port),
-            path=f"/{self.dbname}"
+            path=f'/{self.dbname}'
         )
 
 

@@ -39,7 +39,7 @@ def update_films(producer: PostgresProducer,
     transformed_data = transform_film_work_details(film_work_details)
 
     try:
-        es_loader.bulk_load("movies", transformed_data)
+        es_loader.bulk_load('movies', transformed_data)
         logger.info(f'Successfully loaded {len(transformed_data)} '
                     f'films to Elasticsearch.')
 
@@ -68,7 +68,7 @@ def update_persons(producer, inricher, merger, es_loader) -> Optional[int]:
     transformed_data = transform_film_work_details(film_work_details)
 
     try:
-        es_loader.bulk_load("movies", transformed_data)
+        es_loader.bulk_load('movies', transformed_data)
         logger.info('Successfully loaded related '
                     'films to Elasticsearch.')
     except Exception as e:
@@ -100,7 +100,7 @@ def update_genres(producer: PostgresProducer,
     transformed_data = transform_film_work_details(film_work_details)
 
     try:
-        es_loader.bulk_load("movies", transformed_data)
+        es_loader.bulk_load('movies', transformed_data)
         logger.info('Successfully loaded related '
                     'films for updated genres to Elasticsearch.')
     except Exception as e:
@@ -158,5 +158,5 @@ def main() -> None:
         time.sleep(0.5)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
